@@ -1,0 +1,175 @@
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+
+README FOR TENTING SHIFT SCHEDULER
+PREPARED BY: MIKE OLSON
+
+CONTENTS OF THIS FILE
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+
+ * Introduction
+ * Code.gs
+ * Weight.gs
+ * Setup.gs
+ * Status.gs
+ * Algorithm.gs
+ * Helpers.gs
+ * Globals.gs
+
+
+===============================================================================
+INTRODUCTION
+===============================================================================
+Duke basketball is great. Who doesn’t love Duke basketball? I’ll wait hours in
+line to get into games. I’ll even sleep out in a tent for months to go to the
+Duke vs. UNC game. I don’t mind waiting all that much, I think it’s worth it. I
+do mind coordinating with all of my friends. Scheduling tenting shifts is a
+pain. It’s hard to keep track of everything to make sure we are being as fair
+as possible. Sometimes you’re in and out of the tent every 30-minutes when you
+wish you could have been there for two hours straight and then have someone
+else take your place. Other times you’d rather spend some extra hours in the
+tent during the day to avoid a cold night.
+
+With my independent study. I’m looking to automate the scheduling process. By
+creating a Google Sheets add-on, tenters will be able to upload their
+availability and use my custom algorithm to schedule their shifts. This document
+walks through some of the thought behind the code in the add-on.
+
+
+===============================================================================
+CODE
+===============================================================================
+All code execution begins here. (Kept default name given by Google Apps Script).
+
+onOpen()
+Creates menu with ‘Schedule Shifts’ item on Google Sheets Toolbar to run
+scheduling algorithm.
+
+driver()
+Function called when ‘Schedule Shifts’  is clicked. Gathers necessary data from
+the spreadsheet during page initialization. Sets up and formats this data for
+the scheduling algorithm. Runs the scheduling algorithm and updates all results
+to the spreadsheet.
+
+
+===============================================================================
+WEIGHT
+===============================================================================
+Calculating weights is the core principle behind the scheduling algorithm. The
+weight.gs file contains all of the weighting functions.
+
+weightReset(slots)
+Resets all weights to zero. (Every time a shift is scheduled, calculations are
+going to change).
+
+weightContiguous(people.slots,data,graveyard)
+Prioritizes slots that create longer contiguous shifts or have the hope of
+being part of a larger contiguous shift. Function looks at the time above and
+the time below and runs through every possible case. The given case impacts the
+resulting weight.
+
+weightToughTime(people,slots,length)
+Times that have fewer people available as a ratio of the number of people needed
+are given a higher weight. (These slots will end up going to these people with a
+higher likelihood anyways so it might as well happen earlier on.)
+
+weightPreferenceMaxIdealDayHours(people,slots,data)
+Counts the number of contiguous shifts directly above and directly below a given
+slot. Based off of the resulting number and an individuals preferences, a weight
+is applied to the slot. (If scheduling the shift would make the contiguous block
+too long, the slot in question is given a low weight.)
+
+weightPreferenceBestDay(people,slots)
+Gives a tenter’s favorite day a slight bump over all other days.
+
+weightPick(people, slots, results, graveyard, sheet,data)
+Removes the slot with the highest weight. Updates all information associated with
+that person. Checks to see if other time slots should also be removed and updates
+them as well.
+
+
+===============================================================================
+SETUP
+===============================================================================
+Raw data from the spreadsheet is not organized well enough to execute a
+scheduling algorithm. The setup.gs file takes this data and makes it readable
+for the algorithm.
+
+createPeople(data,preferencesData)
+Iterates through each value in the Master Schedule spreadsheet. Forms a map of
+people. Each person has a name, dayFree counter, nightFree counter, dayScheduled
+counter, nightScheduled counter, maxDayHous, idealDayHours, and bestDay. The
+counters are gradually updated when iterating through each person’s timeslots.
+In the map, the key is the column number, which returns information about the
+person in that column.
+
+createSlots(data)
+Iterates through each timeslot in the Master Schedule spreadsheet. Creates an
+array of slots. Each slot has a date, time, phase, person, weight, row and col.
+Updating these weights is the core idea behind the scheduling algorithm.
+
+setAverageNightPreference(preferencesData)
+Simple function to get the average worth of a night.
+
+
+===============================================================================
+STATUS
+===============================================================================
+Schedulers need a quick way to understand the results of the algorithm. The
+status.gs file updates information on the Google Spreadsheet to show schedulers
+everything they need.
+
+setStatus(data)
+Iterates through every row and updates the status formula. Dynamically changes
+the formula if the phase is changed for any reason.
+
+
+===============================================================================
+ALGORITHM
+===============================================================================
+The scheduling algorithm is not just a simple call to one function. It
+references multiple weighting functions and then some. The algorithm.gs file is
+the core file for algorithm execution. (It all begins here.)
+
+createSchedule(people,slots,data,sheet)
+Iterates through every slot and updates their weights with different weighting
+functions. Once all the functions have finished running, the shift with the
+largest weight is scheduled and removed from the list. Once the list is empty,
+the schedule is complete.
+
+removeFilledSlots(people,slots,data,graveyard)
+Some slots have no hope of being scheduled. In that case, there is no sense to
+keep them in the slots array (in fact, doing so will make the algorithm run
+forever). This function removes slots where enough people are already scheduled.
+
+
+===============================================================================
+HELPERS
+===============================================================================
+Simple helper.gs file that contains one helper function used in other functions
+
+calculatePeopleNeeded(isNight, phase)
+Returns the number of people needed in the tent at a given time. Defined by
+line monitors.
+
+
+===============================================================================
+GLOBALS
+===============================================================================
+Gloabls.gs is a central location containing all global variables. All variables
+are organized by the categories: data, data parameters, availability, phase
+terms, phase requirements, month terms, time terms, and preferences.
+
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
